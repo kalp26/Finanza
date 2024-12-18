@@ -1,0 +1,76 @@
+{% extends 'base_auth.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  body {
+    background-image: url('{% static "C:\expensetracker\expensewebsite\expensewebsite\static\img\login.jpeg" %}'); /* Add your background image here */
+    background-size: cover; 
+    background-repeat: no-repeat; 
+    background-position: center; 
+}
+
+.card {
+    border-radius: 15px; 
+    opacity: 0.9; 
+}
+
+.text-muted {
+    color: #6c757d; 
+}
+
+.text-center {
+    margin-top: 1rem; 
+}
+
+</style>
+
+<nav class="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
+  <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="{% url 'dashboard' %}">Finanza</a>
+</nav>
+
+<div class="container-fluid" style="height: 100vh;">
+  <div class="row justify-content-center align-items-center" style="height: 100%;">
+    <div class="col-md-4">
+      <div class="card rounded-3 shadow">
+        <div class="card-body">
+          <h4 class="card-title text-center">Login to your account</h4>
+          <form action="{% url 'login' %}" method="post">
+            {% csrf_token %}
+            {% include 'partials/messages.html' %}
+            <div class="form-group">
+              <input
+                type="text"
+                name="username"
+                placeholder="Username"
+                id="usernameField"
+                value="{{ fieldValues.username }}"
+                class="form-control"
+              />
+            </div>
+            <div class="form-group">
+              <input
+                type="password"
+                name="password"
+                placeholder="Password"
+                class="form-control"
+                id="passwordField"
+              />
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Login</button>
+          </form>
+          <div class="text-center mt-3">
+            <span class="text-muted">Don't have an account?</span> 
+            <a href="{% url 'register' %}">Register</a><br>
+            <span class="text-muted">Forgot password?</span> 
+            <a href="{% url 'request-password' %}">Reset it</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'js/register.js' %}"></script>
+
+{% endblock content %}

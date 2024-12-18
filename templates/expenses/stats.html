@@ -1,0 +1,297 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    .container {
+        background-color: #fff;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+    }
+    h2 {
+        font-size: 24px;
+        color: #333;
+    }
+    .form-select {
+        width: auto;
+        display: inline-block;
+        margin-right: 10px;
+    }
+    .btn {
+        margin-top: 10px;
+    }
+    
+    canvas {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        
+    }
+    #categoryTotals {
+        margin-top: 20px;
+        background-color: #f1f1f1;
+        padding: 15px;
+        border-radius: 5px;
+    }
+    table {
+        width: 100%;
+        margin-top: 20px;
+        border-collapse: collapse;
+        background-color: #e9ecef;
+    }
+    th, td {
+        padding: 10px;
+        text-align: left;
+        border: 1px solid #ddd;
+    }
+    th {
+        background-color: #343a40;
+        color: white;
+    }
+    .total-summary {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #d1ecf1;
+        border-radius: 5px;
+    }
+</style>
+
+<div class="container mt-4">
+    <h2>Expenses Summary</h2>
+    
+    <div class="total-summary mt-4">
+        <h5>Total Expenses: <span id="totalExpenses">{{ total_expenses }} {{ currency }}</span></h5>
+        {% if predicted_expense %}
+            <h5>Predicted Expense for Next Month: <span id="predictedExpense">{{ predicted_expense|floatformat:2 }} {{ currency }}</span></h5>
+        {% endif %}
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <label for="monthSelect">Select Month:</label>
+            <select id="monthSelect" class="form-select" aria-label="Month select">
+                <option value="01">January</option>
+                <option value="02">February</option>
+                <option value="03">March</option>
+                <option value="04">April</option>
+                <option value="05">May</option>
+                <option value="06">June</option>
+                <option value="07">July</option>
+                <option value="08">August</option>
+                <option value="09">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+            </select>
+            <button id="fetchDataBtn" class="btn btn-primary mt-2">Fetch Data</button>
+            <button id="showAllExpensesBtn" class="btn btn-secondary mt-2">Show All Expenses</button>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <h5>Expense Comparison (Bar Chart)</h5>
+            <canvas id="barChart" height="300"></canvas> 
+        </div>
+     
+        <div class="col-md-6">
+            <h5>Expense Distribution (Pie Chart)</h5>
+            <canvas id="pieChart" height="400"></canvas> 
+        </div>
+    </div>
+
+    <div id="categoryTotals" class="mt-4">
+        <h5>Total Spend Amounts:</h5>
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Amount ({{ currency }})</th>
+                </tr>
+            </thead>
+            <tbody id="totalsTableBody">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let pieChart, barChart;
+
+    const now = new Date();
+    const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
+    document.getElementById('monthSelect').value = currentMonth;
+
+    fetchDataForCurrentMonth(currentMonth);
+
+    document.getElementById('fetchDataBtn').addEventListener('click', async function() {
+        const selectedMonth = document.getElementById('monthSelect').value;
+        await fetchDataForCurrentMonth(selectedMonth);
+    });
+
+    document.getElementById('showAllExpensesBtn').addEventListener('click', async function() {
+        const response = await fetch('/all_expenses_summary');
+        if (!response.ok) {
+            alert('Failed to fetch all expenses summary.');
+            return;
+        }
+        const data = await response.json();
+        updateChartsAndTotals(data);
+    });
+
+    async function fetchDataForCurrentMonth(month) {
+        const response = await fetch(`/expense_category_summary?month=${month}`);
+        if (!response.ok) {
+            alert('Failed to fetch expense summary for the selected month.');
+            return;
+        }
+        const data = await response.json();
+        updateChartsAndTotals(data);
+    }
+
+    function updateChartsAndTotals(data) {
+        const pieCtx = document.getElementById('pieChart').getContext('2d');
+        const barCtx = document.getElementById('barChart').getContext('2d');
+
+        if (pieChart) {
+            pieChart.destroy();
+        }
+        if (barChart) {
+            barChart.destroy();
+        }
+
+        barChart = new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: data.categories,
+                datasets: [{
+                    label: 'Expense Amount',
+                    data: data.total_amounts,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(75, 192, 192, 0.6)',
+                        'rgba(153, 102, 255, 0.6)',
+                        'rgba(255, 159, 64, 0.6)',
+                        'rgba(255, 0, 0, 0.6)',
+                        'rgba(0, 255, 0, 0.6)',
+                        'rgba(0, 0, 255, 0.6)',
+                        'rgba(0, 255, 255, 0.6)',
+                        'rgba(255, 0, 255, 0.6)',
+                        'rgba(128, 128, 0, 0.6)',
+                        'rgba(128, 0, 128, 0.6)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)',
+                        'rgba(255, 0, 0, 1)',
+                        'rgba(0, 255, 0, 1)',
+                        'rgba(0, 0, 255, 1)',
+                        'rgba(0, 255, 255, 1)',
+                        'rgba(255, 0, 255, 1)',
+                        'rgba(128, 128, 0, 1)',
+                        'rgba(128, 0, 128, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true, 
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                    },
+                    tooltip: {
+                        enabled: true
+                    }
+                }
+            }
+        });
+
+        pieChart = new Chart(pieCtx, {
+            type: 'pie',
+            data: {
+                labels: data.categories,
+                datasets: [{
+                    label: 'Expense Amount',
+                    data: data.total_amounts,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(75, 192, 192, 0.6)',
+                        'rgba(153, 102, 255, 0.6)',
+                        'rgba(255, 159, 64, 0.6)',
+                        'rgba(255, 0, 0, 0.6)',
+                        'rgba(0, 255, 0, 0.6)',
+                        'rgba(0, 0, 255, 0.6)',
+                        'rgba(0, 255, 255, 0.6)',
+                        'rgba(255, 0, 255, 0.6)',
+                        'rgba(128, 128, 0, 0.6)',
+                        'rgba(128, 0, 128, 0.6)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)',
+                        'rgba(255, 0, 0, 1)',
+                        'rgba(0, 255, 0, 1)',
+                        'rgba(0, 0, 255, 1)',
+                        'rgba(0, 255, 255, 1)',
+                        'rgba(255, 0, 255, 1)',
+                        'rgba(128, 128, 0, 1)',
+                        'rgba(128, 0, 128, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true        ,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                    },
+                    tooltip: {
+                        enabled: true
+                    }
+                }
+            }
+        });
+
+        // Update totals in table format
+        const totalsTableBody = document.getElementById('totalsTableBody');
+        totalsTableBody.innerHTML = ''; // Clear existing content
+        data.categories.forEach((category, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${category}</td>
+                <td>${data.total_amounts[index]} {{ currency }}</td>
+            `;
+            totalsTableBody.appendChild(row);
+        });
+
+        document.getElementById('totalExpenses').textContent = data.total_expenses + ' {{ currency }}';
+    }
+</script>
+{% endblock %}
